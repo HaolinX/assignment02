@@ -12,10 +12,6 @@ package assignment02PartB;
 // Please organize all the given files in 1 same package
 // Please make sure to read the provided "_ListOf-PleaseDoNotChange.txt"
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
 import java.io.*;
 
 public class StdOutStdErrTee extends OutputStream {
@@ -23,84 +19,82 @@ public class StdOutStdErrTee extends OutputStream {
     //
     // Static Data Fields
     //
-    private static String defaultLogDirectoryPath = Config.getDefaultLogDirectoryPath();
-    private static String defaultStdOutFilePath = Config.getDefaultStdOutFilePath();
-    private static String defaultStdErrFilePath = Config.getDefaultStdErrFilePath();
 
     //
     // Instance Data Fields
     //
-    private PrintWriter printWriter;
-    private FileOutputStream stdOutputStream;
-    private FileOutputStream stdErrStream;
+
+    private String stdOutFilePath = "./src/assignment02PartB/log/StandardOut.log";
+    private String stdErrFilePath = "./src/assignment02PartB/log/StandardErr.log";
+    private OutputStream[] streamsToConsoleToFile;
+    private static PrintStream realSysOut = System.out;
+    private static PrintStream realSysErr = System.err;
 
     //
     // Constructors
     //
+
     public StdOutStdErrTee() {
-        try {
-//            String firstName = ChatSession.getInputFirstName();
-//            String lastName = ChatSession.getInputLastName();
-//            String email = ChatSession.getInputEmail();
-//            printWriter = new PrintWriter(new FileWriter(defaultLogDirectoryPath + "Receipt-" + firstName.toUpperCase() + "-" + lastName.toUpperCase() + "-" + email.toUpperCase() + ".log"));
-            printWriter = new PrintWriter(new FileWriter(defaultLogDirectoryPath + "Receipt.log"));
-            stdOutputStream = new FileOutputStream(defaultStdOutFilePath, true);
-            stdErrStream = new FileOutputStream(defaultStdErrFilePath, true);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
+    }
+
+    public StdOutStdErrTee(PrintStream printStream, FileOutputStream fileOutputStream) {
+        this.streamsToConsoleToFile = new OutputStream[2];
+        streamsToConsoleToFile[0] = printStream;
+        streamsToConsoleToFile[1] = fileOutputStream;
     }
 
     //
     // Instance Methods
     //
 
-    public String getStdOutFilePath() {
-        return Config.getDefaultStdOutFilePath();
-    }
-
-    public String getStdErrFilePath() {
-        return Config.getDefaultStdErrFilePath();
-    }
-
     public void startLog() {
-    }
-
-    public void stopLog() {
-
         try {
-            printWriter.close();
-            stdOutputStream.close();
-            stdErrStream.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+            FileOutputStream stdOutFile = new FileOutputStream(new File(this.stdOutFilePath));
+            FileOutputStream stdErrFile = new FileOutputStream(new File(this.stdErrFilePath));
 
-        readData(defaultLogDirectoryPath + "Receipt.log");
-    }
+            StdOutStdErrTee allStdOut = new StdOutStdErrTee(System.out, stdOutFile);
+            StdOutStdErrTee allStdErr = new StdOutStdErrTee(System.err, stdErrFile);
 
-    public void readData(String path) {
-        File file = new File(path);
+            PrintStream stdOut = new PrintStream(allStdOut);
+            PrintStream stdErr = new PrintStream(allStdErr);
 
-        try {
-            Scanner scan = new Scanner(file);
-            while (scan.hasNextLine()) {
-                String data = scan.nextLine();
-                System.out.println(data);
-            }
-            scan.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            System.setOut(stdOut);
+            System.setErr(stdErr);
+
+        } catch (FileNotFoundException exception) {
+            System.out.println(exception.getMessage());
         }
     }
 
-    public void writeData() {
-
+    public static void stopLog() {
+        System.setOut(realSysOut);
+        System.setErr(realSysErr);
     }
 
     //
     // Additional Methods
     //
+
+    public String getStdOutFilePath() {
+        Config config = Messenger.getConfig();
+        Language language = config.getLanguage();
+        String path = this.stdOutFilePath;
+        if (!(language.getLanguage().equalsIgnoreCase("english"))) {
+            path = language.getTranslation(path);
+        }
+        return path;
+    }
+
+    public String getStdErrFilePath() {
+        Config config = Messenger.getConfig();
+        Language language = config.getLanguage();
+        String path = this.stdErrFilePath;
+        if (!(language.getLanguage().equalsIgnoreCase("english"))) {
+            path = language.getTranslation(path);
+        }
+        return path;
+    }
 
     //
     // Language
@@ -109,6 +103,11 @@ public class StdOutStdErrTee extends OutputStream {
     //
     // Override
     //
+
     public void write(int b) throws IOException {
+        for (OutputStream out : this.streamsToConsoleToFile) {
+            out.write(b);
+            out.flush();
+        }
     }
 }
